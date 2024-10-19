@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 const Home = () => {
@@ -6,56 +6,51 @@ const Home = () => {
   const [recipes, setRecipes] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const debounceTimer = useRef(null);
 
-  const debounce = (func, delay) => {
-    return (...args) => {
-      if (debounceTimer.current) {
-        clearTimeout(debounceTimer.current);
+  // Search function without debounce
+  const searchRecipes = async (searchQuery) => {
+    // Input validation
+    if (searchQuery.trim().length < 3) {
+      setRecipes([]);
+      setError('Please enter at least 3 characters to search.');
+      return;
+    }
+
+    // Set loading state
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // API call
+      const response = await fetch(
+        `https://forkify-api.herokuapp.com/api/v2/recipes?search=${searchQuery}`
+      );
+      const data = await response.json();
+
+      // Handle response
+      if (data.results === 0) {
+        setRecipes([]);
+        setError('No recipes found. Try a different search term.');
+      } else {
+        setRecipes(data.data.recipes);
       }
-      debounceTimer.current = setTimeout(() => {
-        func(...args);
-      }, delay);
-    };
+    } catch (err) {
+      // Error handling
+      setError('An error occurred while fetching recipes. Please try again.');
+      setRecipes([]);
+    } finally {
+      // Reset loading state
+      setIsLoading(false);
+    }
   };
 
-  const searchRecipes = useCallback(
-    debounce(async (searchQuery) => {
-      if (searchQuery.trim().length < 3) {
-        setRecipes([]);
-        setError('Please enter at least 3 characters to search.');
-        return;
-      }
-
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const response = await fetch(`https://forkify-api.herokuapp.com/api/v2/recipes?search=${searchQuery}`);
-        const data = await response.json();
-
-        if (data.results === 0) {
-          setRecipes([]);
-          setError('No recipes found. Try a different search term.');
-        } else {
-          setRecipes(data.data.recipes);
-        }
-      } catch (err) {
-        setError('An error occurred while fetching recipes. Please try again.');
-        setRecipes([]);
-      } finally {
-        setIsLoading(false);
-      }
-    }, 300),
-    []
-  );
-
+  // Handle input change
   const handleInputChange = (e) => {
     const value = e.target.value;
     setQuery(value);
-    searchRecipes(value.toLowerCase().trim());
   };
 
+  // Handle form submission
   const handleSubmit = (e) => {
     e.preventDefault();
     searchRecipes(query.toLowerCase().trim());
@@ -63,7 +58,12 @@ const Home = () => {
 
   return (
     <div className="container mx-auto mt-8 px-4">
-      <h1 className="text-4xl font-bold text-center text-blue-600 mb-8">Kitchen Delights</h1>
+      {/* Main heading */}
+      <h1 className="text-4xl font-bold text-center text-blue-600 mb-8">
+        Recipe Finder
+      </h1>
+
+      {/* Search form */}
       <form onSubmit={handleSubmit} className="mb-8 max-w-2xl mx-auto">
         <div className="flex">
           <input
@@ -82,10 +82,13 @@ const Home = () => {
         </div>
       </form>
 
+      {/* Loading state */}
       {isLoading && <p className="text-center text-gray-600">Loading recipes...</p>}
 
+      {/* Error state */}
       {error && <p className="text-center text-red-500 mb-4">{error}</p>}
 
+      {/* Recipe grid */}
       {!isLoading && !error && recipes.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {recipes.map((recipe) => (
@@ -94,9 +97,15 @@ const Home = () => {
               to={`/recipe/${recipe.id}`}
               className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition duration-300"
             >
-              <img src={recipe.image_url} alt={recipe.title} className="w-full h-48 object-cover" />
+              <img 
+                src={recipe.image_url} 
+                alt={recipe.title} 
+                className="w-full h-48 object-cover" 
+              />
               <div className="p-4">
-                <h2 className="text-lg font-semibold text-gray-800 truncate">{recipe.title}</h2>
+                <h2 className="text-lg font-semibold text-gray-800 truncate">
+                  {recipe.title}
+                </h2>
                 <p className="text-sm text-gray-600 mt-1">{recipe.publisher}</p>
               </div>
             </Link>
